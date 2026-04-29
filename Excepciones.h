@@ -30,8 +30,8 @@ public:
 
 class FormatoInvalido : public ErrorSistema {
 public:
-    FormatoInvalido (const string& ruta) : ErrorSistema ("Formato invalido en la linea" + to_string(numLinea)
-        + ": " + linea) {}
+    FormatoInvalido (const string& linea, int numLinea) : ErrorSistema ("Formato invalido en la linea" + to_string(numLinea)
+                                                         + ": " + linea) {}
     //Este método marca en donde hay un error de linea, mostrándolo de manera invaluda.
 };
 

@@ -1,5 +1,8 @@
 #include "SistemaMantenimiento.h"
+#include "MantenimientoPreventivo.h"
+#include "MantenimientoCorrectivo.h"
 #include <iostream>
+#include <algorithm>
 #include <sstream>
 #include <iomanip>
 #include <cstdlib>   // rand
@@ -30,7 +33,7 @@ SistemaMantenimiento::~SistemaMantenimiento() {
 // ────────────────────────────────────────────────────────────
 void SistemaMantenimiento::agregarEquipo(Equipo* equipo) {
     if (!equipo)
-        throw OperacionInconsistente("Se intentó agregar un equipo nulo.");
+        throw OperacionContradictoria("Se intentó agregar un equipo nulo.");
     equipos.push_back(equipo);
 }
 
@@ -86,7 +89,7 @@ void SistemaMantenimiento::ejecutarMantenimiento(std::vector<Equipo*>& seleccion
         Mantenimiento* estrategia = seleccionarEstrategia(equipo);
 
         // POLIMORFISMO REAL: se invoca aplicar() sin saber la clase concreta
-        estrategia->aplicar(*equipo);
+        estrategia->aplicar(&*equipo);
 
         // DOWNCASTING SEGURO (dynamic_cast) para comportamiento exclusivo
         // de MantenimientoCorrectivo (sección 8.2 del enunciado)
@@ -94,9 +97,9 @@ void SistemaMantenimiento::ejecutarMantenimiento(std::vector<Equipo*>& seleccion
             dynamic_cast<MantenimientoCorrectivo*>(estrategia);
 
         if (correctivo != nullptr) {
-            // Acceso a método exclusivo de la clase derivada
-            std::string informe = correctivo->generarInformeReparacion(*equipo);
-            std::cout << informe << "\n";
+            // Acceso a comportamiento exclusivo de la clase derivada
+            std::cout << "  -> " << correctivo->descripcion()
+                      << " aplicado a " << equipo->getId() << "\n";
         }
 
         equiposAtendidosTotal++;
@@ -119,8 +122,7 @@ Mantenimiento* SistemaMantenimiento::seleccionarEstrategia(const Equipo* equipo)
 // ────────────────────────────────────────────────────────────
 void SistemaMantenimiento::degradarEquipos() {
     for (Equipo* e : equipos) {
-        e->degradar(2.0);
-        e->incrementarTiempoInactivo();  // se resetea solo si recibe mantenimiento
+        e->degradar();
     }
 }
 
@@ -133,13 +135,13 @@ void SistemaMantenimiento::generarIncidenciasAleatorias() {
         int roll = std::rand() % 100;
         if (roll < 20) {
             int sevRoll = std::rand() % 3;
-            Severidad sev = (sevRoll == 0) ? Severidad::ALTA
-                          : (sevRoll == 1) ? Severidad::MEDIA
-                          :                  Severidad::BAJA;
+            std::string sev = (sevRoll == 0) ? "ALTA"
+                            : (sevRoll == 1) ? "MEDIA"
+                            :                  "BAJA";
 
             std::string incId = "INC-D" + std::to_string(diaActual)
                               + "-" + e->getId();
-            Incidencia* inc = new Incidencia(incId, sev, diaActual, e);
+            Incidencia* inc = new Incidencia(incId, sev, diaActual);
             e->agregarIncidencia(inc);
         }
     }
