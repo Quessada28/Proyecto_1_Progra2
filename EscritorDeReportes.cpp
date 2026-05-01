@@ -72,4 +72,5 @@ string EscritorDeReportes::nivelRiesgo(double riesgo) const {
     if (riesgo >= 7.0) return "ALTO";
     if (riesgo >= 4.0) return "MEDIO";
     return "BAJO";
+
 }

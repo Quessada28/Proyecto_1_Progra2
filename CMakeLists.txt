@@ -28,4 +28,9 @@ add_executable(Proyecto_1 main.cpp
         MantenimientoPreventivo.cpp
         MantenimientoPreventivo.h
         MantenimientoCorrectivo.cpp
-        MantenimientoCorrectivo.h)
+        MantenimientoCorrectivo.h
+        InterfazSimulador.h
+        InterfazSimulador.cpp
+        InterfazSimulador.cpp
+        InterfazSimulador.h
+)

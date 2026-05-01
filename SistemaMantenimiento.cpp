@@ -174,7 +174,7 @@ void SistemaMantenimiento::ejecutarDia() {
     diaActual++;
 
     std::cout << "\n╔══════════════════════════════════════╗\n";
-    std::cout <<   "║          DÍA " << std::setw(3) << diaActual
+    std::cout <<   "║          DIA " << std::setw(3) << diaActual
               <<                      " DE SIMULACIÓN          ║\n";
     std::cout <<   "╚══════════════════════════════════════╝\n";
 

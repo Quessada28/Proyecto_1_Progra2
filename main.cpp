@@ -6,7 +6,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     string archivoEntrada = "datos.txt";
-    string carpetaSalida = "reportes";
+    string carpetaSalida = "./reportes";
 
     if (argc >= 2) archivoEntrada = argv[1];
     if (argc >= 3) carpetaSalida  = argv[2];

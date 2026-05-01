@@ -38,6 +38,6 @@ public:
 class OperacionContradictoria : public ErrorSistema {
 public:
     OperacionContradictoria(const string& detalle) : ErrorSistema
-    ("La operación es contradictoria: " + detalle){}
+    ("La operacion es contradictoria: " + detalle){}
     //Funciona si la operación que se quioere realizar, no tiene sentido.
 };

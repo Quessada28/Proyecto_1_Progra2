@@ -5,6 +5,8 @@
 #include "LectorArchivos.h"
 #include "EquipoCritico.h"
 #include "EquipoEstandar.h"
+#include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -19,98 +21,169 @@ void LectorArchivos::leerArchivo(const string& ruta,Equipo** equipos, int& numEq
     numEquipos     = 0;
     numIncidencias = 0;
 
+    cout << "[DEBUG] Leyendo archivo: " << ruta << "\n";
+
     while (getline(archivo, linea)) {
         numLinea++;
         linea = trim(linea);
+
+        // Saltar líneas vacías y comentarios
         if (linea.empty() || linea[0] == '#') continue;
 
+        cout << "[DEBUG] Linea " << numLinea << ": " << linea.substr(0, 50) << "...\n";
+
+        // Detectar equipos: líneas que empiezan con "EQ"
         if (linea.substr(0, 2) == "EQ") {
             if (numEquipos >= maxEquipos)
                 throw OperacionContradictoria("Se supero el limite de equipos permitidos");
-            equipos[numEquipos++] = parsearEquipo(linea, numLinea);
 
-        } else if (linea.substr(0, 3) == "INC") {
+            cout << "  Parseando equipo...\n";
+            equipos[numEquipos++] = parsearEquipo(linea, numLinea);
+            cout << "  Equipo cargado. Total: " << numEquipos << "\n";
+
+        }
+        // Detectar incidencias: líneas que empiezan con "INC"
+        else if (linea.substr(0, 3) == "INC") {
             if (numIncidencias >= maxIncidencias)
                 throw OperacionContradictoria("Se supero el limite de incidencias permitidas");
-            incidencias[numIncidencias++] = parsearIncidencia(linea, numLinea);
 
-        } else {
-            throw FormatoInvalido(linea, numLinea);
+            cout << "   Parseando incidencia...\n";
+            incidencias[numIncidencias++] = parsearIncidencia(linea, numLinea);
+            cout << "   Incidencia cargada. Total: " << numIncidencias << "\n";
+
+        }
+        // Ignorar líneas que empiezan con corchetes (headers de sección)
+        else if (linea[0] == '[' && linea[linea.size()-1] == ']') {
+            cout << "   Sección: " << linea << "\n";
+            continue;
         }
     }
 
     archivo.close();
+
+    cout << "\n[DEBUG] Lectura completada:\n";
+    cout << "  - Equipos leidos: " << numEquipos << "\n";
+    cout << "  - Incidencias leidas: " << numIncidencias << "\n\n";
+
+    if (numEquipos == 0) {
+        throw OperacionContradictoria("El archivo no contiene equipos validos");
+    }
 }
 
 Equipo* LectorArchivos::parsearEquipo(const string& linea, int numLinea) {
-    string partes[3];
-    int    idx = 0;
+    // Formato esperado: EQ id ; criticidad=X ; estado=Y
+
+    // Remover el prefijo "EQ"
+    string contenido = linea.substr(2);
+    contenido = trim(contenido);
+
+    // Dividir por ";"
+    vector<string> partes;
     string actual = "";
 
-    for (int i = 0; i <= (int)linea.size(); i++) {
-        if (i == (int)linea.size() || linea[i] == ';') {
-            if (idx >= 3) throw FormatoInvalido(linea, numLinea);
-            partes[idx++] = trim(actual);
+    for (int i = 0; i <= (int)contenido.size(); i++) {
+        if (i == (int)contenido.size() || contenido[i] == ';') {
+            partes.push_back(trim(actual));
             actual = "";
         } else {
-            actual += linea[i];
+            actual += contenido[i];
         }
     }
 
-    if (idx != 3) throw FormatoInvalido(linea, numLinea);
+    if (partes.size() < 3) {
+        cout << "[ERROR] Formato incorrecto en línea " << numLinea << ": " << linea << "\n";
+        throw FormatoInvalido(linea, numLinea);
+    }
 
     string id = partes[0];
     int criticidad = stoi(extraerValor(partes[1], "criticidad", numLinea));
-    int estado = stoi(extraerValor(partes[2], "estado",     numLinea));
+    int estado = stoi(extraerValor(partes[2], "estado", numLinea));
 
-    if (criticidad < 0 || criticidad > 10)  throw FormatoInvalido(linea, numLinea);
-    if (estado < 0 || estado > 100) throw FormatoInvalido(linea, numLinea);
+    // Validar rangos
+    if (criticidad < 1 || criticidad > 10) {
+        cout << "[ERROR] Criticidad fuera de rango en línea " << numLinea << "\n";
+        throw FormatoInvalido(linea, numLinea);
+    }
+    if (estado < 0 || estado > 100) {
+        cout << "[ERROR] Estado fuera de rango en línea " << numLinea << "\n";
+        throw FormatoInvalido(linea, numLinea);
+    }
 
-    // Upcasting: devolvemos Equipo* apuntando a la clase derivada correcta
-
-    if (criticidad >= 7)
+    // Crear equipo crítico (>=7) o estándar (<7)
+    if (criticidad >= 7) {
+        cout << "    [CRITICO] ID: " << id << ", Criticidad: " << criticidad << ", Estado: " << estado << "\n";
         return new EquipoCritico(id, criticidad, estado);
-    else
+    } else {
+        cout << "    [ESTANDAR] ID: " << id << ", Criticidad: " << criticidad << ", Estado: " << estado << "\n";
         return new EquipoEstandar(id, criticidad, estado);
+    }
 }
 
 Incidencia LectorArchivos::parsearIncidencia(const string& linea, int numLinea) {
-    string partes[4];
-    int idx = 0;
+    // Formato esperado: INC id_equipo ; severidad=X ; dia=Y
+
+    // Remover el prefijo "INC"
+    string contenido = linea.substr(3);
+    contenido = trim(contenido);
+
+    // Dividir por ";"
+    vector <string> partes;
     string actual = "";
 
-    for (int i = 0; i <= (int)linea.size(); i++) {
-        if (i == (int)linea.size() || linea[i] == ';') {
-            if (idx >= 4) throw FormatoInvalido(linea, numLinea);
-            partes[idx++] = trim(actual);
+    for (int i = 0; i <= (int)contenido.size(); i++) {
+        if (i == (int)contenido.size() || contenido[i] == ';') {
+            partes.push_back(trim(actual));
             actual = "";
-            }
-        else {
-            actual += linea[i];
+        } else {
+            actual += contenido[i];
         }
     }
 
-    if (idx != 4) throw FormatoInvalido(linea, numLinea);
-
-    string idEquipo= partes[1];
-    string severidad = extraerValor(partes[2], "severidad", numLinea);
-    int dia = stoi(extraerValor(partes[3], "dia", numLinea));
-
-    if (severidad != "ALTA" && severidad != "MEDIA" && severidad != "BAJA")
+    if (partes.size() < 3) {
+        cout << "[ERROR] Formato incorrecto en línea " << numLinea << ": " << linea << "\n";
         throw FormatoInvalido(linea, numLinea);
+    }
+
+    string idEquipo = partes[0];
+    string severidad = extraerValor(partes[1], "severidad", numLinea);
+    int dia = stoi(extraerValor(partes[2], "dia", numLinea));
+
+    // Validar severidad
+    if (severidad != "ALTA" && severidad != "MEDIA" && severidad != "BAJA") {
+        cout << "[ERROR] Severidad inválida en línea " << numLinea << ": " << severidad << "\n";
+        throw FormatoInvalido(linea, numLinea);
+    }
+
+    // Validar día
+    if (dia < 1 || dia > 30) {
+        cout << "[WARNING] Dia fuera del rango 1-30 en linea " << numLinea << "\n";
+    }
+
+    cout << "    ID: " << idEquipo << ", Severidad: " << severidad << ", Dia: " << dia << "\n";
 
     return Incidencia(idEquipo, severidad, dia);
 }
 
 string LectorArchivos::extraerValor(const string& segmento, const string& clave, int numLinea) {
+    // Formato: clave=valor
+
     size_t pos = segmento.find('=');
-    if (pos == string::npos) throw FormatoInvalido(segmento, numLinea);
+    if (pos == string::npos) {
+        cout << "[ERROR] No se encontró '=' en: " << segmento << "\n";
+        throw FormatoInvalido(segmento, numLinea);
+    }
 
     string k = trim(segmento.substr(0, pos));
     string v = trim(segmento.substr(pos + 1));
 
-    if (k != clave) throw FormatoInvalido(segmento, numLinea);
-    if (v.empty())  throw FormatoInvalido(segmento, numLinea);
+    if (k != clave) {
+        cout << "[ERROR] Clave esperada '" << clave << "', encontrada '" << k << "'\n";
+        throw FormatoInvalido(segmento, numLinea);
+    }
+    if (v.empty()) {
+        cout << "[ERROR] Valor vacío para clave '" << clave << "'\n";
+        throw FormatoInvalido(segmento, numLinea);
+    }
 
     return v;
 }
