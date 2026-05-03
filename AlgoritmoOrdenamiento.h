@@ -19,33 +19,14 @@
  */
 class AlgoritmoOrdenamiento {
 public:
-    /**
-     * @brief Punto de entrada público. Ordena el vector completo.
-     * @param equipos Vector de punteros a Equipo (se modifica in-place).
-     */
-    void ordenar(std::vector<Equipo*>& equipos);
+    void ordenar(vector<Equipo*>& equipos);
 
 private:
-    /**
-     * @brief Implementación recursiva de QuickSort.
-     * @param v     Vector a ordenar.
-     * @param low   Índice inferior del subarreglo actual.
-     * @param high  Índice superior del subarreglo actual.
-     */
-    void quickSort(std::vector<Equipo*>& v, int low, int high);
+    void quickSort(vector<Equipo*>& v, int low, int high); // Aplicado de forma recursiva
 
-    /**
-     * @brief Elige pivote y reordena elementos alrededor de él.
-     *        Usa estrategia "mediana de tres" para evitar O(n²) en datos
-     *        casi ordenados (situación frecuente en simulaciones diarias).
-     * @return Índice final del pivote.
-     */
-    int partition(std::vector<Equipo*>& v, int low, int high);
+    int partition(vector<Equipo*>& v, int low, int high); // Elige pivotes y reordena elementos alrededor de el
 
-    /**
-     * @brief Selecciona el índice del pivote usando mediana de tres.
-     */
-    int medianaDeTres(std::vector<Equipo*>& v, int low, int high);
+    int medianaDeTres(vector<Equipo*>& v, int low, int high); // Selecciona el indice del pivote usando mediana de tres
 };
 
 #endif // ALGORITMO_ORDENAMIENTO_H

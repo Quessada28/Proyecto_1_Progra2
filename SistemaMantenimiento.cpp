@@ -1,6 +1,7 @@
 #include "SistemaMantenimiento.h"
 #include "MantenimientoPreventivo.h"
 #include "MantenimientoCorrectivo.h"
+#include "Excepciones.h"
 #include <iostream>
 #include <algorithm>
 #include <sstream>
@@ -8,9 +9,6 @@
 #include <cstdlib>   // rand
 #include <ctime>
 
-// ────────────────────────────────────────────────────────────
-// Constructor / Destructor
-// ────────────────────────────────────────────────────────────
 SistemaMantenimiento::SistemaMantenimiento()
     : diaActual(0),
       equiposAtendidosTotal(0),
@@ -18,87 +16,74 @@ SistemaMantenimiento::SistemaMantenimiento()
       estrategiaPreventiva(new MantenimientoPreventivo()),
       estrategiaCorrectiva(new MantenimientoCorrectivo())
 {
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
+    srand(static_cast<unsigned>(time(nullptr))); // No se aplica downcast
 }
 
 SistemaMantenimiento::~SistemaMantenimiento() {
-    // El sistema es dueño de las estrategias
+    // El sistema es dueno de las estrategias
     delete estrategiaPreventiva;
     delete estrategiaCorrectiva;
     // Los equipos son gestionados externamente (el caller los crea)
 }
 
-// ────────────────────────────────────────────────────────────
-// Gestión de equipos
-// ────────────────────────────────────────────────────────────
 void SistemaMantenimiento::agregarEquipo(Equipo* equipo) {
     if (!equipo)
-        throw OperacionContradictoria("Se intentó agregar un equipo nulo.");
+        throw OperacionContradictoria("Se intento agregar un equipo nulo.");
     equipos.push_back(equipo);
 }
 
 Equipo* SistemaMantenimiento::buscarEquipo(const std::string& id) {
-    // Copia del vector ordenada por ID para búsqueda binaria
-    std::vector<Equipo*> copia = equipos;
+    // Copia del vector ordenada por ID para busqueda binaria
+    vector<Equipo*> copia = equipos;
     buscador.ordenarPorId(copia);
     return buscador.busquedaBinaria(copia, id);
 }
 
-// ────────────────────────────────────────────────────────────
-// RF4 — Cálculo de prioridad (fórmula oficial)
-// ────────────────────────────────────────────────────────────
+// Calculo de prioridad (formula oficial)
 void SistemaMantenimiento::calcularPrioridades() {
     for (Equipo* e : equipos) {
-        double criticidad       = e->getCriticidad();
-        double incidencias      = static_cast<double>(e->getCantidadIncidencias());
-        double tiempoInactivo   = static_cast<double>(e->getTiempoInactivo());
+        double criticidad     = e->getCriticidad();
+        double incidencias    = static_cast<double>(e->getCantidadIncidencias());
+        double tiempoInactivo = static_cast<double>(e->getTiempoInactivo());
 
-        // ✅ Fórmula OBLIGATORIA del proyecto (RF4)
-        double prioridad = (criticidad    * 0.5)
-                         + (incidencias   * 0.3)
+        double prioridad = (criticidad     * 0.5)
+                         + (incidencias    * 0.3)
                          + (tiempoInactivo * 0.2);
 
         e->setPrioridad(prioridad);
     }
 }
 
-// ────────────────────────────────────────────────────────────
-// RF5 — Ordenamiento con QuickSort propio (sin std::sort)
-// ────────────────────────────────────────────────────────────
+// Ordenamiento con QuickSort propio
 void SistemaMantenimiento::ordenarEquipos() {
     ordenador.ordenar(equipos);   // de mayor a menor prioridad
 }
 
-// ────────────────────────────────────────────────────────────
-// RF6 — Selección de los 3 equipos más urgentes
-// ────────────────────────────────────────────────────────────
-std::vector<Equipo*> SistemaMantenimiento::seleccionarTop3() {
-    std::vector<Equipo*> top3;
-    int limite = std::min(3, static_cast<int>(equipos.size()));
+// Seleccion de los 3 equipos mas urgentes
+vector<Equipo*> SistemaMantenimiento::seleccionarTop3() {
+    vector<Equipo*> top3;
+    int limite = (3 < (int)equipos.size()) ? 3 : (int)equipos.size();
     for (int i = 0; i < limite; ++i)
         top3.push_back(equipos[i]);
     return top3;
 }
 
-// ────────────────────────────────────────────────────────────
-// RF7 — Ejecución de mantenimiento polimórfico (patrón Strategy)
-// ────────────────────────────────────────────────────────────
-void SistemaMantenimiento::ejecutarMantenimiento(std::vector<Equipo*>& seleccionados) {
+// Ejecucion de mantenimiento polimorfico (patron Strategy)
+void SistemaMantenimiento::ejecutarMantenimiento(vector<Equipo*>& seleccionados) {
     for (Equipo* equipo : seleccionados) {
-        // Selección dinámica de estrategia según estado del equipo
+        // Seleccion dinamica de estrategia segun estado del equipo
         Mantenimiento* estrategia = seleccionarEstrategia(equipo);
 
-        // POLIMORFISMO REAL: se invoca aplicar() sin saber la clase concreta
+        // Se invoca aplicar() sin conocer la clase concreta
         estrategia->aplicar(&*equipo);
 
-        // DOWNCASTING SEGURO (dynamic_cast) para comportamiento exclusivo
-        // de MantenimientoCorrectivo (sección 8.2 del enunciado)
+        // dynamic_cast para comportamiento exclusivo de MantenimientoCorrectivo
         MantenimientoCorrectivo* correctivo =
             dynamic_cast<MantenimientoCorrectivo*>(estrategia);
 
         if (correctivo != nullptr) {
             // Acceso a comportamiento exclusivo de la clase derivada
-            std::cout << "  -> " << correctivo->descripcion()
+            cout << "  -> " << correctivo->descripcion()
                       << " aplicado a " << equipo->getId() << "\n";
         }
 
@@ -106,51 +91,43 @@ void SistemaMantenimiento::ejecutarMantenimiento(std::vector<Equipo*>& seleccion
     }
 }
 
-// ────────────────────────────────────────────────────────────
-// Helper: elige estrategia según estado del equipo
-// Equipos con muchas incidencias o estado < 40% → Correctivo
-// El resto → Preventivo
-// ────────────────────────────────────────────────────────────
+// Helper: elige estrategia segun estado del equipo
+// Equipos con muchas incidencias o estado < 40% -> Correctivo
+// El resto -> Preventivo
 Mantenimiento* SistemaMantenimiento::seleccionarEstrategia(const Equipo* equipo) const {
     bool necesitaCorrectivo = (equipo->getCantidadIncidencias() > 2)
                            || (equipo->getEstado() < 40.0);
     return necesitaCorrectivo ? estrategiaCorrectiva : estrategiaPreventiva;
 }
 
-// ────────────────────────────────────────────────────────────
-// RF3 — Degradación diaria de todos los equipos
-// ────────────────────────────────────────────────────────────
+// Degradacion diaria de todos los equipos
 void SistemaMantenimiento::degradarEquipos() {
     for (Equipo* e : equipos) {
         e->degradar();
     }
 }
 
-// ────────────────────────────────────────────────────────────
-// Generación de incidencias aleatorias (simula eventos del día)
-// ────────────────────────────────────────────────────────────
+// Generacion de incidencias aleatorias (simula eventos del dia)
 void SistemaMantenimiento::generarIncidenciasAleatorias() {
-    // Cada día, ~20% de los equipos puede recibir una incidencia nueva
+    // Cada dia, ~20% de los equipos puede recibir una incidencia nueva
     for (Equipo* e : equipos) {
         int roll = std::rand() % 100;
         if (roll < 20) {
             int sevRoll = std::rand() % 3;
-            std::string sev = (sevRoll == 0) ? "ALTA"
-                            : (sevRoll == 1) ? "MEDIA"
-                            :                  "BAJA";
+            string sev = (sevRoll == 0) ? "ALTA"
+                       : (sevRoll == 1) ? "MEDIA"
+                       :                  "BAJA";
 
-            std::string incId = "INC-D" + std::to_string(diaActual)
-                              + "-" + e->getId();
+            string incId = "INC-D" + std::to_string(diaActual)
+                         + "-" + e->getId();
             Incidencia* inc = new Incidencia(incId, sev, diaActual);
             e->agregarIncidencia(inc);
         }
     }
 }
 
-// ────────────────────────────────────────────────────────────
-// Cálculo del riesgo global del laboratorio
+// Calculo del riesgo global del laboratorio
 // Promedio ponderado de (criticidad * (1 - estado/100))
-// ────────────────────────────────────────────────────────────
 double SistemaMantenimiento::calcularRiesgoGlobal() const {
     if (equipos.empty()) return 0.0;
     double sumaRiesgo = 0.0;
@@ -167,58 +144,54 @@ int SistemaMantenimiento::getBacklogPendiente() const {
     return pendiente;
 }
 
-// ────────────────────────────────────────────────────────────
-// RF2 — Flujo completo de un día de simulación
-// ────────────────────────────────────────────────────────────
+// Flujo completo de un dia de simulacion
 void SistemaMantenimiento::ejecutarDia() {
     diaActual++;
 
-    std::cout << "\n╔══════════════════════════════════════╗\n";
-    std::cout <<   "║          DIA " << std::setw(3) << diaActual
-              <<                      " DE SIMULACIÓN          ║\n";
-    std::cout <<   "╚══════════════════════════════════════╝\n";
+    cout << "\n╔══════════════════════════════════════╗\n";
+    cout <<   "║          DIA " << setw(3) << diaActual
+              <<                      " DE SIMULACION          ║\n";
+    cout <<   "╚══════════════════════════════════════╝\n";
 
-    // PASO 1: Degradación diaria (RF3)
+    // Degradacion diaria (RF3)
     degradarEquipos();
 
-    // PASO 2: Aparición de nuevas incidencias
+    // Aparicion de nuevas incidencias
     generarIncidenciasAleatorias();
 
-    // PASO 3: Cálculo de prioridades (RF4)
+    // Calculo de prioridades (RF4)
     calcularPrioridades();
 
-    // PASO 4: Reordenamiento (RF5)
+    // Reordenamiento (RF5)
     ordenarEquipos();
 
-    // PASO 5: Selección de los 3 más urgentes (RF6)
-    std::vector<Equipo*> top3 = seleccionarTop3();
+    // Seleccion de los 3 mas urgentes (RF6)
+    vector<Equipo*> top3 = seleccionarTop3();
 
-    // PASO 6: Ejecución de mantenimiento (RF7)
+    // Ejecucion de mantenimiento (RF7)
     ejecutarMantenimiento(top3);
 
-    // PASO 7: Actualización de riesgo global (RF8)
+    // Actualizacion de riesgo global (RF8)
     riesgoGlobal = calcularRiesgoGlobal();
 
-    // PASO 8: Reporte del día (RF9)
-    std::string reporte = generarReporteDia(top3);
-    std::cout << reporte;
+    // Reporte del dia (RF9)
+    string reporte = generarReporteDia(top3);
+    cout << reporte;
 }
 
-// ────────────────────────────────────────────────────────────
-// RF9 — Reporte del día
-// ────────────────────────────────────────────────────────────
-std::string SistemaMantenimiento::generarReporteDia(
-    const std::vector<Equipo*>& atendidos) const
+// Reporte del dia
+string SistemaMantenimiento::generarReporteDia(
+    const vector<Equipo*>& atendidos) const
 {
-    std::ostringstream oss;
+    ostringstream oss;
 
-    oss << "\n--- Reporte Día " << diaActual << " ---\n";
+    oss << "\n--- Reporte Dia " << diaActual << " ---\n";
 
     // Top prioridad
     oss << "Top prioridad: ";
     for (size_t i = 0; i < atendidos.size(); ++i) {
         oss << atendidos[i]->getId()
-            << " (" << std::fixed << std::setprecision(1)
+            << " (" << fixed << setprecision(1)
             << atendidos[i]->getPrioridad() << ")";
         if (i + 1 < atendidos.size()) oss << ", ";
     }
@@ -235,16 +208,16 @@ std::string SistemaMantenimiento::generarReporteDia(
     // Backlog y riesgo
     oss << "Backlog pendiente: " << getBacklogPendiente() << "\n";
 
-    std::string nivelRiesgo;
-    if      (riesgoGlobal >= 7.0) nivelRiesgo = "CRÍTICO";
+    string nivelRiesgo;
+    if      (riesgoGlobal >= 7.0) nivelRiesgo = "CRITICO";
     else if (riesgoGlobal >= 5.0) nivelRiesgo = "ALTO";
     else if (riesgoGlobal >= 3.0) nivelRiesgo = "MEDIO";
     else                          nivelRiesgo = "BAJO";
 
     oss << "Riesgo global: " << nivelRiesgo
-        << " (" << std::fixed << std::setprecision(2) << riesgoGlobal << ")\n";
+        << " (" << fixed << setprecision(2) << riesgoGlobal << ")\n";
 
-    // Equipos pendientes (los que NO fueron atendidos hoy)
+    // Equipos pendientes (los que NO fueron atendidos en la iteracion actual)
     oss << "Equipos pendientes (muestra top 5):\n";
     int mostrados = 0;
     for (const Equipo* e : equipos) {
@@ -254,7 +227,7 @@ std::string SistemaMantenimiento::generarReporteDia(
 
         if (!estaEnTop && mostrados < 5) {
             oss << "  " << e->getId()
-                << " prio=" << std::fixed << std::setprecision(1) << e->getPrioridad()
+                << " prio=" << fixed << setprecision(1) << e->getPrioridad()
                 << " inc=" << e->getCantidadIncidencias() << "\n";
             mostrados++;
         }
@@ -263,23 +236,21 @@ std::string SistemaMantenimiento::generarReporteDia(
     return oss.str();
 }
 
-// ────────────────────────────────────────────────────────────
-// Reporte acumulado de la simulación completa
-// ────────────────────────────────────────────────────────────
-std::string SistemaMantenimiento::generarReporteResumen() const {
-    std::ostringstream oss;
+// Reporte acumulado de la simulacion completa
+string SistemaMantenimiento::generarReporteResumen() const {
+    ostringstream oss;
     oss << "\n╔══════════════════════════════════════╗\n";
-    oss << "║        RESUMEN FINAL SIMULACIÓN      ║\n";
+    oss << "║        RESUMEN FINAL SIMULACION      ║\n";
     oss << "╚══════════════════════════════════════╝\n";
-    oss << "Días simulados     : " << diaActual << "\n";
+    oss << "Dias simulados     : " << diaActual << "\n";
     oss << "Total equipos      : " << equipos.size() << "\n";
     oss << "Atenciones totales : " << equiposAtendidosTotal << "\n";
     oss << "Backlog al final   : " << getBacklogPendiente() << "\n";
-    oss << "Riesgo final       : " << std::fixed << std::setprecision(2)
+    oss << "Riesgo final       : " << fixed << setprecision(2)
         << riesgoGlobal << "\n";
 
     oss << "\nEstado final de equipos (top 10 prioridad):\n";
-    int n = std::min(10, static_cast<int>(equipos.size()));
+    int n = (10 < (int)equipos.size()) ? 10 : (int)equipos.size();
     for (int i = 0; i < n; ++i)
         oss << "  " << equipos[i]->toString() << "\n";
 
@@ -287,7 +258,7 @@ std::string SistemaMantenimiento::generarReporteResumen() const {
 }
 
 void SistemaMantenimiento::imprimirEstadoActual() const {
-    std::cout << "\n=== Estado actual — Día " << diaActual << " ===\n";
+    cout << "\n=== Estado actual - Dia " << diaActual << " ===\n";
     for (const Equipo* e : equipos)
-        std::cout << "  " << e->toString() << "\n";
+        cout << "  " << e->toString() << "\n";
 }

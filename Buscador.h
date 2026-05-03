@@ -18,20 +18,9 @@
  */
 class Buscador {
 public:
-    /**
-     * @brief Busca un equipo por su ID en tiempo O(log n).
-     * @param equipos Vector previamente ordenado por ID (ascendente).
-     * @param id      Identificador a buscar.
-     * @return Puntero al equipo encontrado, o nullptr si no existe.
-     */
-    Equipo* busquedaBinaria(std::vector<Equipo*>& equipos, const std::string& id);
+    Equipo* busquedaBinaria(vector<Equipo*>& equipos, const string& id); //Busca un equipo por su ID
 
-    /**
-     * @brief Ordena el vector por ID para preparar la búsqueda binaria.
-     *        Usa insertion sort (apropiado para colecciones pequeñas o
-     *        casi ordenadas, como listas de IDs string).
-     */
-    void ordenarPorId(std::vector<Equipo*>& equipos);
+    void ordenarPorId(vector<Equipo*>& equipos); //Ordena el vector por ID para preparar la busqueda binaria
 };
 
 #endif // BUSCADOR_H

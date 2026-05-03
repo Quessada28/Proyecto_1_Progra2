@@ -6,28 +6,12 @@
 #include "Mantenimiento.h"
 #include "AlgoritmoOrdenamiento.h"
 #include "Buscador.h"
-#include "Excepciones.h"
 #include <vector>
 #include <string>
 
-/**
- * @brief Coordinador central de la simulación de mantenimiento.
- *
- * Responsabilidades (SRP):
- *  - Calcular prioridades usando la fórmula oficial.
- *  - Ordenar equipos con QuickSort propio (via AlgoritmoOrdenamiento).
- *  - Seleccionar los 3 equipos de mayor prioridad.
- *  - Ejecutar mantenimiento polimórfico (Strategy pattern).
- *  - Orquestar el flujo completo de cada día de simulación.
- *
- * Polimorfismo:
- *  - Trabaja con vector<Equipo*> (upcasting).
- *  - Aplica Mantenimiento* de forma polimórfica.
- *  - Usa dynamic_cast para acceder al informe exclusivo de Correctivo.
- */
 class SistemaMantenimiento {
 private:
-    std::vector<Equipo*> equipos;          // colección polimórfica (upcasting)
+    vector<Equipo*> equipos;          // colección polimórfica (upcasting)
     AlgoritmoOrdenamiento ordenador;
     Buscador buscador;
     int diaActual;
@@ -38,7 +22,7 @@ private:
     Mantenimiento* estrategiaPreventiva;
     Mantenimiento* estrategiaCorrectiva;
 
-    // ── Helpers privados ────────────────────────────────────
+    // Auxiliares privados
     Mantenimiento* seleccionarEstrategia(const Equipo* equipo) const;
     double calcularRiesgoGlobal() const;
     void degradarEquipos();
@@ -48,52 +32,31 @@ public:
     SistemaMantenimiento();
     ~SistemaMantenimiento();
 
-    // ── Gestión de equipos ──────────────────────────────────
+    // Equipos
     void agregarEquipo(Equipo* equipo);
-    Equipo* buscarEquipo(const std::string& id);
+    Equipo* buscarEquipo(const string& id);
 
-    // ── Pipeline de un día (RF3-RF8) ────────────────────────
+    void calcularPrioridades(); // Calcular prioridad para cada equipo
 
-    /**
-     * @brief RF4: Calcula prioridad de cada equipo con la fórmula oficial:
-     *   prioridad = (criticidad * 0.5) + (incidencias * 0.3) + (tiempo_inactivo * 0.2)
-     */
-    void calcularPrioridades();
+    void ordenarEquipos(); // Ordenamiento mediante Quicksort
 
-    /**
-     * @brief RF5: Ordena equipos de mayor a menor prioridad (QuickSort propio).
-     */
-    void ordenarEquipos();
+    vector<Equipo*> seleccionarTop3(); // Devuelve 3 equipos con mayor prioridad
 
-    /**
-     * @brief RF6: Devuelve los 3 equipos con mayor prioridad.
-     */
-    std::vector<Equipo*> seleccionarTop3();
+    void ejecutarMantenimiento(vector<Equipo*>& seleccionados); // Aplicar mantenimiento a los equipos seleccionados por el sistema
 
-    /**
-     * @brief RF7: Aplica mantenimiento polimórfico a cada equipo seleccionado.
-     *             Usa dynamic_cast para generar informe en MantenimientoCorrectivo.
-     */
-    void ejecutarMantenimiento(std::vector<Equipo*>& seleccionados);
+    void ejecutarDia(); // Ejecuta dia completo de la simulacion
 
-    /**
-     * @brief RF2/RF3/RF8: Ejecuta el flujo completo de un día de simulación.
-     *        Secuencia: degradar → incidencias → prioridades → ordenar
-     *                   → top3 → mantenimiento → actualizar → reportar
-     */
-    void ejecutarDia();
-
-    // ── Reportes ────────────────────────────────────────────
-    std::string generarReporteDia(const std::vector<Equipo*>& atendidos) const;
-    std::string generarReporteResumen() const;
+    // Reportes
+    string generarReporteDia(const vector<Equipo*>& atendidos) const;
+    string generarReporteResumen() const;
     void imprimirEstadoActual() const;
 
-    // ── Getters de estado ───────────────────────────────────
+    // Getters de estado
     int getDiaActual()            const { return diaActual; }
     double getRiesgoGlobal()      const { return riesgoGlobal; }
     int getEquiposAtendidosTotal() const { return equiposAtendidosTotal; }
     int getBacklogPendiente()     const;
-    const std::vector<Equipo*>& getEquipos() const { return equipos; }
+    const vector<Equipo*>& getEquipos() const { return equipos; }
 };
 
 #endif // SISTEMA_MANTENIMIENTO_H
